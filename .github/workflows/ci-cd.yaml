@@ -1,0 +1,43 @@
+name: CI/CD Pipeline 
+ 
+on: [push, pull_request] 
+ 
+jobs: 
+ 
+build: 
+    runs-on: ubuntu-latest 
+ 
+    steps: 
+    - name: Checkout code 
+      uses: actions/checkout@v2 
+ 
+    - name: Set up Python 
+      uses: actions/setup-python@v2 
+      with: 
+        python-version: 3.8 
+ 
+    - name: Install dependencies 
+      run: | 
+        python -m venv my_env 
+        my_env\Scripts\activate.bat 
+        pip install -r requirements.txt 
+ 
+    - name: Run data import 
+      run: | 
+        my_env\Scripts\activate.bat 
+        python src\data\import_raw_data.py 
+ 
+    - name: Run data processing 
+      run: | 
+        my_env\Scripts\activate.bat 
+        python src\data\make_dataset.py 
+ 
+    - name: Train model 
+      run: | 
+        my_env\Scripts\activate.bat 
+        python src\models\train_model.py 
+ 
+    - name: Test prediction 
+      run: | 
+        my_env\Scripts\activate.bat 
+        python src\models\predict_model.py src\models\test_features.json 
