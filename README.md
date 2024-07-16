@@ -1,97 +1,155 @@
-Project Name
-==============================
+# MLOps Project for Road Accidents
 
-This project is a starting Pack for MLOps projects based on the subject "road accident". It's not perfect so feel free to make some modifications on it.
+This project aims to reduce the number of road accidents by identifying high-risk areas and providing recommendations to improve safety. The data used in this project consists of annual files from 2005 to 2022, containing information about the characteristics, locations, vehicles, and users involved in accidents.
 
-Project Organization
-------------
+## Project Organization
 
     ├── LICENSE
-    ├── README.md          <- The top-level README for developers using this project.
+    ├── README.md           <- The top-level README for developers using this project.
+    ├── .github
+    │   └── workflows
+    │       └── ci-cd.yaml  <- GitHub Actions workflow for CI/CD.
     ├── data
-    │   ├── external       <- Data from third party sources.
-    │   ├── interim        <- Intermediate data that has been transformed.
-    │   ├── processed      <- The final, canonical data sets for modeling.
-    │   └── raw            <- The original, immutable data dump.
-    │
-    ├── logs               <- Logs from training and predicting
-    │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
-    │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
-    │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-    │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
-    │
-    ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-    │                         generated with `pip freeze > requirements.txt`
-    │
-    ├── src                <- Source code for use in this project.
-    │   ├── __init__.py    <- Makes src a Python module
-    │   │
-    │   ├── data           <- Scripts to download or generate data
-    │   │   ├── check_structure.py    
-    │   │   ├── import_raw_data.py 
-    │   │   └── make_dataset.py
-    │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
-    │   │
-    │   ├── models         <- Scripts to train models and then use trained models to make
-    │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
-    │   │
-    │   ├── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │   │   └── visualize.py
-    │   └── config         <- Describe the parameters used in train_model.py and predict_model.py
+    │   ├── external        <- Data from third party sources.
+    │   ├── interim         <- Intermediate data that has been transformed.
+    │   ├── processed       <- The final, canonical data sets for modeling.
+    │   └── raw             <- The original, immutable data dump.
+    ├── docker
+    │   ├── Dockerfile      <- Dockerfile for building the application container.
+    │   └── docker-compose.yml <- Docker Compose file to setup the entire application stack.
+    ├── logs                <- Logs from training and predicting.
+    ├── models              <- Trained and serialized models, model predictions, or model summaries.
+    │   ├── trained_model.joblib <- Example of a trained model file.
+    │   └── model_evaluation.txt <- Evaluation metrics of the trained model.
+    ├── notebooks           <- Jupyter notebooks.
+    │   └── 1.0-ldj-initial-data-exploration.ipynb
+    ├── references          <- Data dictionaries, manuals, and all other explanatory materials.
+    ├── reports             <- Generated analysis as HTML, PDF, LaTeX, etc.
+    │   └── figures         <- Generated graphics and figures to be used in reporting.
+    ├── requirements.txt    <- The requirements file for reproducing the analysis environment.
+    ├── setup.py            <- Makes the project pip installable (pip install -e .).
+    └── src                 <- Source code for use in this project.
+        ├── __init__.py     <- Makes src a Python module.
+        ├── api             <- FastAPI application for the model.
+        │   ├── main.py     <- Main file to run the FastAPI application.
+        │   ├── predict.py  <- Endpoint for making predictions.
+        │   ├── train.py    <- Endpoint for training the model.
+        │   └── utils.py    <- Utility functions for the API.
+        ├── config          <- Configuration files for the project.
+        │   └── config.yaml <- Configuration parameters for training and prediction.
+        ├── data            <- Scripts to download or generate data.
+        │   ├── check_structure.py <- Script to check file and folder structure.
+        │   ├── import_raw_data.py <- Script to import raw data from a source.
+        │   └── make_dataset.py    <- Script to process raw data into final dataset.
+        ├── features        <- Scripts to turn raw data into features for modeling.
+        │   └── build_features.py  <- Script to build features.
+        ├── models          <- Scripts to train models and then use trained models to make predictions.
+        │   ├── train_model.py <- Script to train the model.
+        │   ├── predict_model.py <- Script to make predictions with the trained model.
+        │   └── test_features.json <- Example input for the predict_model script.
+        ├── tests           <- Unit tests and integration tests.
+        │   ├── test_data.py <- Tests for data processing.
+        │   ├── test_features.py <- Tests for feature engineering.
+        │   ├── test_models.py <- Tests for model training and prediction.
+        │   ├── test_api.py  <- Tests for API endpoints.
+        │   └── test_endpoints.py <- Tests for API endpoints.
+        └── visualization   <- Scripts to create exploratory and results oriented visualizations.
+            └── visualize.py <- Script to create visualizations.
 
----------
+## Getting Started
 
-## Steps to follow 
+### Prerequisites
 
-Convention : All python scripts must be run from the root specifying the relative file path.
+- Python 3.8
+- Docker
+- Docker Compose
 
-### 1- Create a virtual environment using Virtualenv.
+### Installation
 
-    `python -m venv my_env`
+1. **Clone the repository**:
 
-###   Activate it 
+    ```sh
+    git clone https://github.com/your_username/mlops_accidents.git
+    cd mlops_accidents
+    ```
 
-    `./my_env/Scripts/activate`
+2. **Create and activate a virtual environment**:
 
-###   Install the packages from requirements.txt
+    ```sh
+    python -m venv my_env
+    my_env\Scripts\activate
+    ```
 
-    `pip install -r .\requirements.txt` ### You will have an error in "setup.py" but this won't interfere with the rest
+3. **Install the dependencies**:
 
-### 2- Execute import_raw_data.py to import the 4 datasets.
+    ```sh
+    pip install -r requirements.txt
+    ```
 
-    `python .\src\data\import_raw_data.py` ### It will ask you to create a new folder, accept it.
+### Usage
 
-### 3- Execute make_dataset.py initializing `./data/raw` as input file path and `./data/preprocessed` as output file path.
+1. **Import raw data**:
 
-    `python .\src\data\make_dataset.py`
+    ```sh
+    python src\data\import_raw_data.py
+    ```
 
-### 4- Execute train_model.py to instanciate the model in joblib format
+2. **Process data to create the final dataset**:
 
-    `python .\src\models\train_model.py`
+    ```sh
+    python src\data\make_dataset.py
+    ```
 
-### 5- Finally, execute predict_model.py with respect to one of these rules :
-  
-  - Provide a json file as follow : 
+3. **Train the model**:
 
-    
-    `python ./src/models/predict_model.py ./src/models/test_features.json`
+    ```sh
+    python src\models\train_model.py
+    ```
 
-  test_features.json is an example that you can try 
+4. **Run the FastAPI application**:
 
-  - If you do not specify a json file, you will be asked to enter manually each feature. 
+    ```sh
+    uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+    ```
 
+### Docker
 
-------------------------
+1. **Build and start the Docker containers**:
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+    ```sh
+    docker-compose up --build
+    ```
+
+2. **Stop and remove the Docker containers**:
+
+    ```sh
+    docker-compose down
+    ```
+
+### Running Tests
+
+1. **Run all tests**:
+
+    ```sh
+    pytest
+    ```
+
+### CI/CD with GitHub Actions
+
+This project uses GitHub Actions for Continuous Integration and Continuous Deployment (CI/CD). The configuration file is located at `.github/workflows/ci-cd.yaml`.
+
+### Contributing
+
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/my-feature`).
+3. Commit your changes (`git commit -m 'Add my feature'`).
+4. Push to the branch (`git push origin feature/my-feature`).
+5. Open a Pull Request.
+
+### License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+### Acknowledgements
+
+This project is based on the MLOps practices and aims to provide a robust and scalable solution for road accident analysis and prediction.
