@@ -10,6 +10,9 @@ COPY . .
 # Installer les dépendances
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Installer uvicorn
+RUN pip install uvicorn 
+
 # Exposer le port que l'application utilisera
 EXPOSE 8000
 
