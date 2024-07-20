@@ -95,6 +95,7 @@ This project aims to reduce the number of road accidents by identifying high-ris
     ```
 
 2. **Process data to create the final dataset**:
+    ***Initializing ./data/raw as input file path and ./data/preprocessed as output file path.***
 
     ```sh
     python src\data\make_dataset.py
