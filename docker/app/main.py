@@ -3,10 +3,26 @@ from pydantic import BaseModel
 from typing import List
 from geopy.geocoders import Nominatim
 import sqlite_utils
+import os
+from middleware import log_request_middleware  # Importer le middleware avec une importation absolue
 
 app = FastAPI()
-db = sqlite_utils.Database("sqlite:////db/data.db")
+db_path = "/db/data.db"
 geolocator = Nominatim(user_agent="my_app")
+
+# Créer le répertoire /db si nécessaire
+os.makedirs("/db", exist_ok=True)
+
+# Enregistrer le middleware
+app.middleware("http")(log_request_middleware)
+
+# Vérifiez si la base de données existe, sinon créez-la
+if not os.path.exists(db_path):
+    db = sqlite_utils.Database(db_path)
+    with open("/app/schema.sql", "r") as schema_file:
+        db.executescript(schema_file.read())
+else:
+    db = sqlite_utils.Database(db_path)
 
 class User(BaseModel):
     id: int
@@ -16,16 +32,6 @@ class User(BaseModel):
 
 class PredictionRequest(BaseModel):
     location: str
-
-# main.py
-from fastapi import FastAPI
-from .test_api import router as test_router  # Importer le routeur de test
-
-app = FastAPI()
-
-# Enregistrer le routeur de test
-app.include_router(test_router)
-
 
 @app.post("/api/users")
 def create_user(user: User):
@@ -71,3 +77,9 @@ def get_predictions():
 def get_prediction(prediction_id: int):
     # Fetch prediction details
     pass
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+# Le reste de votre code FastAPI ici

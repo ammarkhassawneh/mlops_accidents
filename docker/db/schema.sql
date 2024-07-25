@@ -16,12 +16,13 @@ CREATE TABLE IF NOT EXISTS predictions (
 );
 
 CREATE TABLE IF NOT EXISTS request_logs (
-    id INTEGER PRIMARY KEY,
-    ip_address TEXT NOT NULL,
-    endpoint TEXT NOT NULL,
-    input_data TEXT NOT NULL,
-    output_data TEXT NOT NULL,
-    timestamp TEXT NOT NULL
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip_address TEXT,
+    endpoint TEXT,
+    input_data TEXT,
+    output_data TEXT,
+    timestamp TEXT,
+    processing_time REAL
 );
 
 CREATE TABLE IF NOT EXISTS test_results (

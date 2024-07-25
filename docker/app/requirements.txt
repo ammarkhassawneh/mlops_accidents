@@ -5,3 +5,4 @@ sqlalchemy
 sqlite-utils
 passlib[bcrypt]
 pyjwt
+geopy
