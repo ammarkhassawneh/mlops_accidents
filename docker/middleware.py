@@ -2,7 +2,7 @@ from fastapi import Request
 from datetime import datetime
 import sqlite_utils
 
-db = sqlite_utils.Database("sqlite:////db/data.db")
+db = sqlite_utils.Database("/db/data.db")
 
 async def log_request_middleware(request: Request, call_next):
     start_time = datetime.now()
