@@ -9,6 +9,10 @@ from datetime import datetime, timedelta, timezone
 import sqlite_utils
 import os
 import jwt
+from geopy.geocoders import Nominatim
+
+# from middleware import log_request_middleware  # Importer le middleware
+# import httpx
 
 # Création de l'application FastAPI avec la documentation incluse
 app = FastAPI(

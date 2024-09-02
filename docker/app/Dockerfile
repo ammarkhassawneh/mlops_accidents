@@ -1,4 +1,5 @@
 FROM ubuntu:18.04
+#FROM python:3.8-slim
 
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -14,6 +15,9 @@ RUN pip3 install --upgrade pip
 WORKDIR /app
 
 COPY requirements.txt .
+
+# Créez le répertoire pour la base de données
+RUN mkdir -p /db && chmod 777 /db
 
 RUN pip3 install --no-cache-dir -r requirements.txt
 
