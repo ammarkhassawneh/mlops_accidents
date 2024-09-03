@@ -1,0 +1,95 @@
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+from datetime import datetime, timedelta
+import sys
+import os
+from pathlib import Path
+
+from build_features import build_features
+from predict_model import predict_model
+
+# Obtenir le chemin du dossier parent du DAG (dossier 'dags')
+dags_folder = Path(__file__).parent
+
+# Définir les chemins relatifs
+project_root = dags_folder.parent.parent
+src_folder = project_root / 'src'
+data_folder = project_root / 'data'
+sys.path.append(str(Path(__file__).parent.parent / 'ml_model'))
+
+# Ajouter le dossier src au sys.path
+sys.path.append(str(Path(__file__).parent.parent))
+sys.path.append(str(src_folder))
+sys.path.append('/opt/airflow/ml_model')
+
+# Importer la fonction make_dataset
+from src.data.make_dataset import main as make_dataset
+
+# Définir les chemins pour les données brutes et prétraitées
+RAW_DATA_PATH = '/opt/airflow/data/raw'
+PROCESSED_DATA_PATH = '/opt/airflow/ml_model/data/preprocessed'
+
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2024, 9, 1),
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
+
+dag = DAG(
+    'data_preprocessing',
+    default_args=default_args,
+    description='A DAG for preprocessing accident data',
+    schedule_interval='@monthly',  # Exécution mensuelle
+)
+
+def check_raw_data(**kwargs):
+    required_files = [
+        'caracteristiques-2021.csv',
+        'lieux-2021.csv',
+        'usagers-2021.csv',
+        'vehicules-2021.csv'
+    ]
+    for file in required_files:
+        if not (RAW_DATA_PATH / file).exists():
+            raise FileNotFoundError(f"Le fichier {file} n'est pas présent dans le dossier des données brutes.")
+    print("Tous les fichiers de données brutes sont présents.")
+
+def preprocess_data(**kwargs):
+    make_dataset(str(RAW_DATA_PATH), str(PROCESSED_DATA_PATH))
+    print("Prétraitement des données terminé.")
+
+def check_processed_data(**kwargs):
+    required_files = [
+        'X_test.csv',
+        'X_train.csv',
+        'y_test.csv',
+        'y_train.csv'
+    ]
+    for file in required_files:
+        if not (PROCESSED_DATA_PATH / file).exists():
+            raise FileNotFoundError(f"Le fichier {file} n'a pas été créé dans le dossier des données prétraitées.")
+    print("Tous les fichiers de données prétraitées ont été créés avec succès.")
+
+check_raw_data_task = PythonOperator(
+    task_id='check_raw_data',
+    python_callable=check_raw_data,
+    dag=dag,
+)
+
+preprocess_data_task = PythonOperator(
+    task_id='preprocess_data',
+    python_callable=preprocess_data,
+    dag=dag,
+)
+
+check_processed_data_task = PythonOperator(
+    task_id='check_processed_data',
+    python_callable=check_processed_data,
+    dag=dag,
+)
+
+check_raw_data_task >> preprocess_data_task >> check_processed_data_task

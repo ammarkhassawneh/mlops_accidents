@@ -1,5 +1,6 @@
 FROM ubuntu:18.04
 
+
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -15,10 +16,14 @@ WORKDIR /app
 
 COPY requirements.txt .
 
+# Cr�ez le r�pertoire pour la base de donn�es
+RUN mkdir -p /db && chmod 777 /db
+
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 443
+EXPOSE 80
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "443", "--ssl-keyfile", "/app/localhost.key", "--ssl-certfile", "/app/localhost.crt"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+
