@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.append('/opt/airflow/ml_model')
 sys.path.append(str(Path(__file__).resolve().parent.parent.parent / 'src'))
 
-# from features.build_features import build_features
+from features.build_features import build_features
 
 default_args = {
     'owner': 'airflow',
@@ -38,17 +38,16 @@ def process_data(**kwargs):
     input_filepath_places = f"{input_filepath}/lieux-2021.csv"
     input_filepath_veh = f"{input_filepath}/vehicules-2021.csv"
     
-    '''X_train, X_test, y_train, y_test = build_features(
+
+   ''' X_train, X_test, y_train, y_test = build_features(
         input_filepath_users,
         input_filepath_caract,
         input_filepath_places,
         input_filepath_veh,
         output_filepath
-    )'''
-    
-    print("Data processing completed. Files saved in:", output_filepath)
+)'''
 
-process_data_task = PythonOperator(
+    )
     task_id='process_data',
     python_callable=process_data,
     provide_context=True,
