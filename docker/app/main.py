@@ -4,7 +4,8 @@ from typing import List
 from geopy.geocoders import Nominatim
 import sqlite_utils
 import os
-from middleware import log_request_middleware  # Importer le middleware avec une importation absolue
+from middleware import log_request_middleware  # Importer le middleware
+import httpx
 
 app = FastAPI()
 db_path = "/db/data.db"
@@ -83,3 +84,22 @@ def read_root():
     return {"Hello": "World"}
 
 # Le reste de votre code FastAPI ici
+
+@app.post("/api/predictions")
+async def predict_severity(request: PredictionRequest):
+    location = geolocator.geocode(request.location)
+    if not location:
+        raise HTTPException(status_code=400, detail="Invalid location")
+
+    # Appel au service ML
+    async with httpx.AsyncClient() as client:
+        response = await client.post("http://ml_model:5000/predict", json={
+            "latitude": location.latitude,
+            "longitude": location.longitude
+        })
+    prediction = response.json()
+
+    # Stocker la prédiction dans la base de données
+    # (à implémenter)
+
+    return prediction

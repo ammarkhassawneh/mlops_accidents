@@ -6,3 +6,4 @@ sqlite-utils
 passlib[bcrypt]
 pyjwt
 geopy
+httpx
