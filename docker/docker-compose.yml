@@ -14,17 +14,15 @@ services:
       timeout: 5s
       retries: 5
 
-    
-
   app:
     image: python:3.8-slim
     working_dir: /app
-    command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 80"
+    command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 443 --ssl-keyfile /app/key.pem --ssl-certfile /app/cert.pem"
     volumes:
       - ./app:/app
       - db_data:/app/db
     ports:
-      - 8000:80
+      - 443:443
     depends_on:
       db:
         condition: service_healthy
