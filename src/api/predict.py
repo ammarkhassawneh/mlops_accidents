@@ -27,7 +27,7 @@ class PredictionRequest(BaseModel):
     com: int 
     agg_: int 
     int: int 
-    atm: int 
+    atm: int
     col: int 
     lat: float 
     long: float 
