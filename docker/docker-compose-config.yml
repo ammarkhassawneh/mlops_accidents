@@ -1,0 +1,243 @@
+name: docker
+services:
+  airflow-init:
+    command:
+      - db
+      - init
+    depends_on:
+      postgres:
+        condition: service_started
+        required: true
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__FERNET_KEY: amhZdn3_tNi04FxFuF_YCy0IVPpEGkM2Z4tqN7yIhSw=
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: 199c08ec1564acdc15c6e0e4b762d44d
+      FERNET_KEY: amhZdn3_tNi04FxFuF_YCy0IVPpEGkM2Z4tqN7yIhSw=
+      WEBSERVER_SECRET_KEY: 199c08ec1564acdc15c6e0e4b762d44d
+    image: apache/airflow:2.6.3
+    networks:
+      default: null
+    volumes:
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\dags
+        target: /opt/airflow/dags
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\logs
+        target: /opt/airflow/logs
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\plugins
+        target: /opt/airflow/plugins
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\ml_model
+        target: /opt/airflow/ml_model
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\features
+        target: /opt/airflow/features
+        bind:
+          create_host_path: true
+  airflow-scheduler:
+    command:
+      - scheduler
+    depends_on:
+      airflow-init:
+        condition: service_started
+        required: true
+      postgres:
+        condition: service_started
+        required: true
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__FERNET_KEY: amhZdn3_tNi04FxFuF_YCy0IVPpEGkM2Z4tqN7yIhSw=
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: 199c08ec1564acdc15c6e0e4b762d44d
+      FERNET_KEY: amhZdn3_tNi04FxFuF_YCy0IVPpEGkM2Z4tqN7yIhSw=
+      WEBSERVER_SECRET_KEY: 199c08ec1564acdc15c6e0e4b762d44d
+    image: apache/airflow:2.6.3
+    networks:
+      default: null
+    volumes:
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\dags
+        target: /opt/airflow/dags
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\logs
+        target: /opt/airflow/logs
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\plugins
+        target: /opt/airflow/plugins
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\ml_model
+        target: /opt/airflow/ml_model
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\features
+        target: /opt/airflow/features
+        bind:
+          create_host_path: true
+  airflow-webserver:
+    command:
+      - webserver
+    depends_on:
+      airflow-init:
+        condition: service_started
+        required: true
+      postgres:
+        condition: service_started
+        required: true
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__FERNET_KEY: amhZdn3_tNi04FxFuF_YCy0IVPpEGkM2Z4tqN7yIhSw=
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__WEBSERVER__SECRET_KEY: 199c08ec1564acdc15c6e0e4b762d44d
+      FERNET_KEY: amhZdn3_tNi04FxFuF_YCy0IVPpEGkM2Z4tqN7yIhSw=
+      WEBSERVER_SECRET_KEY: 199c08ec1564acdc15c6e0e4b762d44d
+    image: apache/airflow:2.6.3
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8081"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\dags
+        target: /opt/airflow/dags
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\logs
+        target: /opt/airflow/logs
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\plugins
+        target: /opt/airflow/plugins
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\ml_model
+        target: /opt/airflow/ml_model
+        bind:
+          create_host_path: true
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\features
+        target: /opt/airflow/features
+        bind:
+          create_host_path: true
+  app:
+    command:
+      - sh
+      - -c
+      - pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 443 --ssl-keyfile /app/key.pem --ssl-certfile /app/cert.pem
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+    environment:
+      DATABASE_URL: sqlite:////app/db/data.db
+    image: python:3.8-slim
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 443
+        published: "443"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\app
+        target: /app
+        bind:
+          create_host_path: true
+      - type: volume
+        source: db_data
+        target: /app/db
+        volume: {}
+    working_dir: /app
+  db:
+    command:
+      - /bin/sh
+      - -c
+      - apk add --no-cache sqlite && echo 'Executing schema.sql' && sqlite3 /db/data.db '.read /db/schema.sql' && echo 'Schema executed' && tail -f /dev/null
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - sqlite3 /db/data.db 'SELECT 1'
+      timeout: 5s
+      interval: 10s
+      retries: 5
+    image: alpine:latest
+    networks:
+      default: null
+    volumes:
+      - type: volume
+        source: db_data
+        target: /db
+        volume: {}
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\db\schema.sql
+        target: /db/schema.sql
+        bind:
+          create_host_path: true
+  ml_model:
+    build:
+      context: C:\Users\prequ\Accidents\mlops_accidents\docker\ml_model
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_started
+        required: true
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5000
+        published: "5000"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\prequ\Accidents\mlops_accidents\docker\ml_model
+        target: /ml_model
+        bind:
+          create_host_path: true
+  postgres:
+    environment:
+      POSTGRES_DB: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_USER: airflow
+    image: postgres:13
+    networks:
+      default: null
+    volumes:
+      - type: volume
+        source: postgres-db-volume
+        target: /var/lib/postgresql/data
+        volume: {}
+networks:
+  default:
+    name: docker_default
+volumes:
+  db_data:
+    name: docker_db_data
+  postgres-db-volume:
+    name: docker_postgres-db-volume

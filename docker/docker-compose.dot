@@ -1,0 +1,56 @@
+digraph G {
+  rankdir=TB;
+  ranksep=0.5;
+  nodesep=0.5;
+  ratio="0.75";
+  size="10,7.5!";
+  
+  subgraph cluster_airflow {
+    label="Airflow Services";
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+    airflow_init [label="airflow-init"];
+    airflow_scheduler [label="airflow-scheduler"];
+    airflow_webserver [label="airflow-webserver"];
+  }
+
+  subgraph cluster_app {
+    label="Application";
+    style=filled;
+    color=lightblue;
+    node [style=filled,color=white];
+    app [label="app"];
+    db [label="db"];
+    ml_model [label="ml_model"];
+  }
+
+  postgres [label="postgres"];
+
+  {rank=same; airflow_init airflow_scheduler airflow_webserver}
+  {rank=same; app db ml_model}
+
+  airflow_init -> default;
+  airflow_scheduler -> default;
+  airflow_webserver -> default;
+  app -> default;
+  db -> default;
+  ml_model -> default;
+  postgres -> default;
+
+  app -> db_data [label="/app/db"];
+  db -> db_data [label="/db"];
+  postgres -> postgres_db_volume [label="/var/lib/postgresql/data"];
+
+  default [label="default network", shape=ellipse];
+  db_data [label="db_data volume", shape=box];
+  postgres_db_volume [label="postgres-db-volume", shape=box];
+
+  volumes [label="Shared Volumes", shape=folder];
+  airflow_init -> volumes [style=dotted];
+  airflow_scheduler -> volumes [style=dotted];
+  airflow_webserver -> volumes [style=dotted];
+  app -> volumes [style=dotted];
+  db -> volumes [style=dotted];
+  ml_model -> volumes [style=dotted];
+}
