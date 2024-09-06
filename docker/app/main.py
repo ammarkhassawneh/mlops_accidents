@@ -1,4 +1,6 @@
 import sqlite3
+
+import httpx
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -9,10 +11,10 @@ from datetime import datetime, timedelta, timezone
 import sqlite_utils
 import os
 import jwt
+import httpx
 from geopy.geocoders import Nominatim
 
-# from middleware import log_request_middleware  # Importer le middleware
-# import httpx
+
 
 # Création de l'application FastAPI avec la documentation incluse
 app = FastAPI(
@@ -65,15 +67,41 @@ def create_tables():
             db["predictions"].create({
                 "id": int,
                 "user_id": int,
-                "severity": float,
-                "latitude": float,
-                "longitude": float,
+                "place": int,
+                "catu": int,
+                "sexe": int,
+                "secu1": float,
+                "year_acc": int,
+                "victim_age": int,
+                "catv": int,
+                "obsm": int,
+                "motor": int,
+                "catr": int,
+                "circ": int,
+                "surf": int,
+                "situ": int,
+                "vma": float,
+                "jour": int,
+                "mois": int,
+                "lum": int,
+                "dep": int,
+                "com": int,
+                "agg_": int,
+                "intt": int,
+                "atm": int,
+                "col": int,
+                "lat": float,
+                "long": float,
+                "hour": int,
+                "nb_victim": int,
+                "nb_vehicules": int,
+                "predicted_severity": float,
                 "timestamp": str
             }, pk="id")
             # Ajout des contraintes sur la latitude, la longitude et la sévérité
-            db["predictions"].add_column("severity", float, not_null=True, check="severity >= 0 AND severity <= 1")
-            db["predictions"].add_column("latitude", float, not_null=True, check="latitude >= -90 AND latitude <= 90")
-            db["predictions"].add_column("longitude", float, not_null=True, check="longitude >= -180 AND longitude <= 180")
+            db["predictions"].add_column("predicted_severity", float, not_null=True, check="predicted_severity >= 0 AND predicted_severity <= 1")
+            db["predictions"].add_column("lat", float, not_null=True, check="lat >= -90 AND lat <= 90")
+            db["predictions"].add_column("long", float, not_null=True, check="long >= -180 AND long <= 180")
 
         # Création de la table des journaux de requêtes
         if not db["request_logs"].exists():
@@ -152,6 +180,37 @@ async def log_request_middleware(request: Request, call_next):
 
     return response
 
+# Modèle de requête pour l'API
+class PredictionRequest(BaseModel):
+    place: int
+    catu: int
+    sexe: int
+    secu1: float
+    year_acc: int
+    victim_age: int
+    catv: int
+    obsm: int
+    motor: int
+    catr: int
+    circ: int
+    surf: int
+    situ: int
+    vma: int
+    jour: int
+    mois: int
+    lum: int
+    dep: int
+    com: int
+    agg_: int
+    intt: int
+    atm: int
+    col: int
+    lat: float
+    long: float
+    hour: int
+    nb_victim: int
+    nb_vehicules: int
+
 # Modèles Pydantic pour gérer les données d'entrée et de sortie
 class Token(BaseModel):
     access_token: str
@@ -175,6 +234,8 @@ class UserCreate(BaseModel):
     read_rights: str
     write_rights: str
 
+
+"""
 class Prediction(BaseModel):
     user_id: int
     severity: float
@@ -198,6 +259,9 @@ class Prediction(BaseModel):
         if not -180 <= v <= 180:
             raise ValueError('Longitude must be between -180 and 180')
         return v
+"""
+
+
 
 class RequestLog(BaseModel):
     ip_address: str
@@ -392,23 +456,82 @@ async def manage_users(current_admin: User = Depends(get_current_admin)):
     finally:
         db.conn.close()
 
-# Endpoints pour les prédictions
 @app.post("/api/predictions", tags=["Predictions"])
-async def create_prediction(prediction: Prediction):
+async def create_prediction(prediction: PredictionRequest, current_user: dict = Depends(get_current_user)):
+    """
+    Crée une nouvelle prédiction en envoyant les données au modèle ML et en sauvegardant le résultat dans la base de données.
+    Cette fonction récupère également l'ID de l'utilisateur actuellement authentifié.
+    """
+    ml_model_url = "http://ml_model:80/predict"  # Utilisez le nom du service pour Docker
     db_path = "/app/db/data.db"
     db = sqlite_utils.Database(db_path)
+    
     try:
-        db["predictions"].insert({
-            "user_id": prediction.user_id,
-            "severity": prediction.severity,
-            "latitude": prediction.latitude,
-            "longitude": prediction.longitude,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
-        log_activity(prediction.user_id, "Création d'une nouvelle prédiction")
-        return {"message": "Prédiction créée avec succès"}
+        # Envoyer la requête au modèle ML pour obtenir la prédiction
+        async with httpx.AsyncClient() as client:
+            response = await client.post(ml_model_url, json=prediction.dict(), timeout=30.0)
+        
+        # Vérifier si la requête au modèle a réussi
+        if response.status_code == 200:
+            result = response.json()
+            severity = result["prediction"]  
+            
+            # Obtenir le user_id de l'utilisateur authentifié
+            user_id = current_user["id"]
+            
+            # Insérer la prédiction dans la base de données
+            db["predictions"].insert({
+                "user_id": user_id,  # Utiliser l'user_id de l'utilisateur actuel
+                "place": prediction.place,
+                "catu": prediction.catu,
+                "sexe": prediction.sexe,
+                "secu1": prediction.secu1,
+                "year_acc": prediction.year_acc,
+                "victim_age": prediction.victim_age,
+                "catv": prediction.catv,
+                "obsm": prediction.obsm,
+                "motor": prediction.motor,
+                "catr": prediction.catr,
+                "circ": prediction.circ,
+                "surf": prediction.surf,
+                "situ": prediction.situ,
+                "vma": prediction.vma,
+                "jour": prediction.jour,
+                "mois": prediction.mois,
+                "lum": prediction.lum,
+                "dep": prediction.dep,
+                "com": prediction.com,
+                "agg_": prediction.agg_,
+                "intt": prediction.intt,
+                "atm": prediction.atm,
+                "col": prediction.col,
+                "lat": prediction.lat,
+                "long": prediction.long,
+                "hour": prediction.hour,
+                "nb_victim": prediction.nb_victim,
+                "nb_vehicules": prediction.nb_vehicules,
+                "predicted_severity": severity,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            
+            # Enregistrer l'activité de l'utilisateur
+            log_activity(user_id, "Création d'une nouvelle prédiction")
+            
+            # Retourner le message et la prédiction à l'utilisateur
+            return {"message": "Prédiction créée avec succès", "severity": severity}
+        else:
+            raise HTTPException(status_code=500, detail="Erreur lors de la prédiction")
+    
+    except httpx.ConnectTimeout:
+        raise HTTPException(status_code=504, detail="Timeout lors de la connexion au service de prédiction")
+    
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=500, detail=f"Erreur de requête: {exc}")
+    
     finally:
         db.conn.close()
+
+
 
 @app.get("/api/predictions/{user_id}", tags=["Predictions"])
 async def get_predictions_for_user(user_id: int):

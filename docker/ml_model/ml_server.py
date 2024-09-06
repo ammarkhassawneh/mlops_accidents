@@ -1,24 +1,62 @@
-from flask import Flask, request, jsonify
-from predict_model import predict_severity, loaded_model
-from build_features import preprocess_features
+# Chemin: docker/ml_model/ml_server.py
 
-app = Flask(__name__)
+from fastapi import FastAPI
+from pydantic import BaseModel
+from predict_model import predict_model
+from train_model import train_and_save_model
+import joblib
+import os
 
-@app.route('/predict', methods=['POST'])
-def predict():
-    data = request.json
-    
-    # Prétraiter les données
-    preprocessed_data = preprocess_features(data)
-    
-    # Faire la prédiction
-    prediction = predict_severity(loaded_model, preprocessed_data)
-    
-    return jsonify({'prediction': float(prediction)})
+app = FastAPI()
 
-@app.route('/test', methods=['GET'])
-def test():
-    return jsonify({'status': 'OK', 'message': 'Server is running'})
+# Vérifier et entraîner le modèle si nécessaire lors du démarrage
+@app.on_event("startup")
+def startup_event():
+    train_and_save_model()
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+# Modèle pour les données d'entrée
+class Features(BaseModel):
+    place: int
+    catu: int
+    sexe: int
+    secu1: float
+    year_acc: int
+    victim_age: int
+    catv: int
+    obsm: int
+    motor: int
+    catr: int
+    circ: int
+    surf: int
+    situ: int
+    vma: int
+    jour: int
+    mois: int
+    lum: int
+    dep: int
+    com: int
+    agg_: int
+    intt: int
+    atm: int
+    col: int
+    lat: float
+    long: float
+    hour: int
+    nb_victim: int
+    nb_vehicules: int
+
+@app.post("/predict")
+async def predict(features: Features):
+    """
+    Point d'entrée pour les prédictions.
+    """
+    input_features = features.dict()
+    prediction = predict_model(input_features)
+    # Assurez-vous que la prédiction soit convertie en type natif Python
+    prediction_value = float(prediction[0])
+    return {"prediction": prediction_value}
+
+# Point d'entrée principal
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=80)

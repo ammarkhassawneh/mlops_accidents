@@ -1,28 +1,58 @@
-FROM python:3.11.9
+#FROM python:3.11.9
 
-WORKDIR /ml_model
+#WORKDIR /ml_model
 
-RUN pip install --no-cache-dir --upgrade pip
+#RUN pip install --no-cache-dir --upgrade pip
 
 # Installer une version spécifique de numpy
-RUN pip install --no-cache-dir numpy==1.23.5
+#RUN pip install --no-cache-dir numpy==1.23.5
 
 # Installer scikit-learn séparément
-RUN pip install --no-cache-dir scikit-learn==1.4.2
+#RUN pip install --no-cache-dir scikit-learn==1.4.2
 
+#COPY requirements.txt .
+#RUN pip install --no-cache-dir -r requirements.txt
+
+# Copier d'abord les fichiers Python nécessaires
+#COPY ml_server.py predict_model.py build_features.py ./
+
+# Copier le modèle entraîné
+#COPY trained_model.joblib .
+
+# Assurez-vous que le dossier data est copié dans le conteneur si nécessaire
+#COPY ./data /ml_model/data
+
+# Copier tous les autres fichiers restants
+#COPY . .
+
+#CMD ["python", "ml_server.py"]
+
+# Dockerfile pour le service ml_model
+
+# Utiliser une image Python 3.11.9
+FROM python:3.11.9
+
+# Définir le répertoire de travail dans la conteneur
+WORKDIR /ml_model
+
+# Installer les outils nécessaires pour construire les bibliothèques comme gcc
+RUN apt-get update && apt-get install -y build-essential gcc
+
+# Mettre à jour pip pour avoir la dernière version
+RUN pip install --no-cache-dir --upgrade pip
+
+# Copier le fichier des dépendances et installer les paquets requis
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copier d'abord les fichiers Python nécessaires
-COPY ml_server.py predict_model.py build_features.py ./
+# Copier les scripts Python nécessaires
+COPY ml_server.py predict_model.py train_model.py build_features.py ./
 
-# Copier le modèle entraîné
-COPY trained_model.joblib .
-
-# Assurez-vous que le dossier data est copié dans le conteneur si nécessaire
+# Copier les données nécessaires si elles existent dans le dossier data local
 COPY ./data /ml_model/data
 
-# Copier tous les autres fichiers restants
-COPY . .
+EXPOSE 80
 
-CMD ["python", "ml_server.py"]
+# Vérifier si le modèle est déjà entraîné (fichier trained_model.joblib)
+# Si le modèle n'existe pas, entraîner un nouveau modèle avant de lancer le serveur Uvicorn
+CMD ["/bin/bash", "-c", "if [ ! -f trained_model.joblib ]; then python train_model.py; fi && uvicorn ml_server:app --host 0.0.0.0 --port 80"]

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 -- Création de la table des utilisateurs
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,12 +13,38 @@ CREATE TABLE IF NOT EXISTS users (
 -- Création de la table des prédictions
 CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    severity REAL NOT NULL CHECK(severity >= 0 AND severity <= 1),  -- La gravité doit être entre 0 et 1
-    latitude REAL NOT NULL CHECK(latitude >= -90 AND latitude <= 90),  -- Latitude valide
-    longitude REAL NOT NULL CHECK(longitude >= -180 AND longitude <= 180),  -- Longitude valide
-    timestamp TEXT NOT NULL DEFAULT (datetime('now', 'utc')),  -- Enregistrer le moment de la prédiction en UTC
-    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE  -- Supprimer les prédictions si l'utilisateur est supprimé
+    user_id INTEGER NOT NULL,                         -- L'ID de l'utilisateur qui a fait la prédiction
+    predicted_severity REAL NOT NULL CHECK(predicted_severity >= 0 AND predicted_severity <= 1),  -- La gravité de l'accident prédite
+    lat REAL NOT NULL CHECK(lat >= -90 AND lat <= 90),  -- Latitude valide
+    long REAL NOT NULL CHECK(long >= -180 AND long <= 180),  -- Longitude valide
+    place INTEGER NOT NULL,                           -- Lieu de l'accident
+    catu INTEGER NOT NULL,                            -- Catégorie d'usager impliqué
+    sexe INTEGER NOT NULL,                            -- Sexe de l'usager impliqué
+    secu1 REAL NOT NULL,                              -- Moyens de sécurité utilisés
+    year_acc INTEGER NOT NULL,                        -- Année de l'accident
+    victim_age INTEGER NOT NULL,                      -- Âge de la victime
+    catv INTEGER NOT NULL,                            -- Catégorie de véhicule
+    obsm INTEGER NOT NULL,                            -- État d'observation du conducteur
+    motor INTEGER NOT NULL,                           -- Type de véhicule à moteur
+    catr INTEGER NOT NULL,                            -- Catégorie de la route
+    circ INTEGER NOT NULL,                            -- Circulation routière
+    surf INTEGER NOT NULL,                            -- État de la surface de la route
+    situ INTEGER NOT NULL,                            -- Situation de l'accident
+    vma INTEGER NOT NULL,                             -- Vitesse maximale autorisée
+    jour INTEGER NOT NULL,                            -- Jour de l'accident
+    mois INTEGER NOT NULL,                            -- Mois de l'accident
+    lum INTEGER NOT NULL,                             -- Conditions d'éclairage
+    dep INTEGER NOT NULL,                             -- Département où a eu lieu l'accident
+    com INTEGER NOT NULL,                             -- Commune où a eu lieu l'accident
+    agg_ INTEGER NOT NULL,                            -- Agglomération
+    intt INTEGER NOT NULL,                             -- Type d'intersection
+    atm INTEGER NOT NULL,                             -- Conditions météorologiques
+    col INTEGER NOT NULL,                             -- Type de collision
+    hour INTEGER NOT NULL,                            -- Heure de l'accident
+    nb_victim INTEGER NOT NULL,                       -- Nombre de victimes
+    nb_vehicules INTEGER NOT NULL,                    -- Nombre de véhicules impliqués
+    timestamp TEXT NOT NULL DEFAULT (datetime('now', 'utc')),  -- Timestamp de la prédiction en UTC
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE  -- Suppression en cascade des prédictions si l'utilisateur est supprimé
 );
 
 -- Création de la table des journaux de requêtes
@@ -49,38 +74,3 @@ CREATE TABLE IF NOT EXISTS test_results (
     result BOOLEAN NOT NULL,   -- Résultat du test
     timestamp TEXT NOT NULL DEFAULT (datetime('now', 'utc'))  -- Moment du résultat en UTC
 );
-=======
-CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    read_rights TEXT NOT NULL,
-    write_rights TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS predictions (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER NOT NULL,
-    severity REAL NOT NULL,
-    latitude REAL NOT NULL,
-    longitude REAL NOT NULL,
-    timestamp TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-);
-
-CREATE TABLE IF NOT EXISTS request_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ip_address TEXT,
-    endpoint TEXT,
-    input_data TEXT,
-    output_data TEXT,
-    timestamp TEXT,
-    processing_time REAL
-);
-
-CREATE TABLE IF NOT EXISTS test_results (
-    id INTEGER PRIMARY KEY,
-    test_name TEXT NOT NULL,
-    result BOOLEAN NOT NULL,
-    timestamp TEXT NOT NULL
-);
->>>>>>> 36f112f8ecbe942040783f6218ba10150a26e995
