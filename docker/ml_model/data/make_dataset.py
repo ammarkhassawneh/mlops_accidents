@@ -5,8 +5,10 @@ from pathlib import Path
 import click
 import logging
 from sklearn.model_selection import train_test_split
-# from check_structure import check_existing_file, check_existing_folder
+from ml_model.data.check_structure import check_existing_file, check_existing_folder
 import os
+
+from ml_model.data.check_structure import check_existing_file, check_existing_folder
 
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=False), required=0)

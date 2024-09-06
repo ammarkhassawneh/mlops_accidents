@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from predict_model import predict_severity, loaded_model
-from build_features import preprocess_features
+from build_features import build_features
 
 app = Flask(__name__)
 

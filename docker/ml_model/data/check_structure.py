@@ -29,5 +29,9 @@ def check_existing_folder(folder_path):
     else:
         return False
 
+def main():
+    # Ajoutez ici le code principal
+    pass
 
-main()
+if __name__ == "__main__":
+    main()

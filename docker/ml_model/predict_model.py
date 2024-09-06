@@ -6,26 +6,10 @@ import sys
 print(f"NumPy version: {np.__version__}")
 print(f"Scikit-learn version: {sklearn.__version__}")
 
-
-
-'''# Créer un modèle factice
-dummy_model = DecisionTreeClassifier()
-dummy_model.fit([[0, 0], [1, 1]], [0, 1])  # Entraînement factice
-
-# Sauvegarder le modèle factice
-joblib.dump(dummy_model, "dummy_model.joblib")
-
 # Charger le modèle
 try:
-    loaded_model = joblib.load("dummy_model.joblib")
-    print("Dummy model loaded successfully")
-except Exception as e:
-    print(f"Error loading model: {e}")
-    loaded_model = DecisionTreeClassifier()'''
-
-# Charger le modèle
-try:
-    loaded_model = joblib.load("trained_model.joblib")
+   # loaded_model = joblib.load("trained_model.joblib")
+    loaded_model = joblib.load("/ml_model/trained_model.joblib")
     print("Model loaded successfully")
 except Exception as e:
     print(f"Error loading model: {e}")

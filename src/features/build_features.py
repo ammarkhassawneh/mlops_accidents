@@ -56,5 +56,40 @@ def build_features(input_filepath_users, input_filepath_caract, input_filepath_p
     df[col_to_replace1_na] = df[col_to_replace1_na].replace(-1, np.nan)
     df[col_to_replace0_na] = df[col_to_replace0_na].replace(0, np.nan)
 
-    # Dropping columns
-    list_to_drop = ['senc','larrout','actp', 'manv', 'choc', 'nbv', 'prof', 'plan', 'Num_Acc', 'id_vehicule', 'num_veh', 'pr', 'pr
+   #--Dropping columns 
+    list_to_drop = ['senc','larrout','actp', 'manv', 'choc', 'nbv', 'prof', 'plan', 'Num_Acc', 'id_vehicule', 'num_veh', 'pr', 'pr1','voie', 'trajet',"secu2", "secu3",'adr', 'v1', 'lartpc','occutc','v2','vosp','locp','etatp', 'infra', 'obs' ]
+    df.drop(list_to_drop, axis=1, inplace=True)
+
+    #--Dropping lines with NaN values
+    col_to_drop_lines = ['catv', 'vma', 'secu1', 'obsm', 'atm']
+    df = df.dropna(subset = col_to_drop_lines, axis=0)
+
+
+    target = df['grav']
+    feats = df.drop(['grav'], axis = 1)
+
+    X_train, X_test, y_train, y_test = train_test_split(feats, target, test_size=0.3, random_state = 42)
+
+    #--Filling NaN values
+    col_to_fill_na = ["surf", "circ", "col", "motor"]
+    X_train[col_to_fill_na] = X_train[col_to_fill_na].fillna(X_train[col_to_fill_na].mode().iloc[0])
+    X_test[col_to_fill_na] = X_test[col_to_fill_na].fillna(X_train[col_to_fill_na].mode().iloc[0])
+
+    # Create folder if necessary 
+    if check_existing_folder(output_folderpath) :
+        os.makedirs(output_folderpath)
+
+    #--Saving the dataframes to their respective output file paths
+    for file, filename in zip([X_train, X_test, y_train, y_test], ['X_train', 'X_test', 'y_train', 'y_test']):
+        output_filepath = os.path.join(output_folderpath, f'{filename}.csv')
+        if check_existing_file(output_filepath):
+            file.to_csv(output_filepath, index=False)
+
+if __name__ == '__main__':
+    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(level=logging.INFO, format=log_fmt)
+
+    # not used in this stub but often useful for finding various files
+    project_dir = Path(__file__).resolve().parents[2]
+                    
+

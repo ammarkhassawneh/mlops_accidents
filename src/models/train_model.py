@@ -23,3 +23,6 @@ rf_classifier.fit(X_train, y_train)
 model_filename = './src/models/trained_model.joblib'
 joblib.dump(rf_classifier, model_filename)
 print("Model trained and saved successfully.")
+
+
+main()

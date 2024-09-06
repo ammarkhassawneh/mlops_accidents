@@ -1,0 +1,77 @@
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime, timedelta
+import pandas as pd
+import numpy as np
+from sklearn import ensemble
+import joblib
+import os
+
+# Définir le chemin de base du projet
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2023, 9, 9),  # Commencer un samedi
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
+
+dag = DAG(
+    'train_random_forest_model_weekly',
+    default_args=default_args,
+    description='Un DAG pour entraîner un modèle Random Forest chaque samedi à 23h00',
+    schedule_interval='0 23 * * 6',  # Cron expression pour chaque samedi à 23h00
+    catchup=False,  # Ne pas exécuter les runs manqués
+)
+
+def train_model():
+    # Utiliser os.path.join pour créer des chemins portables
+    data_dir = os.path.join(BASE_DIR, 'data', 'preprocessed')
+    
+    X_train = pd.read_csv(os.path.join(data_dir, 'X_train.csv'))
+    X_test = pd.read_csv(os.path.join(data_dir, 'X_test.csv'))
+    y_train = pd.read_csv(os.path.join(data_dir, 'y_train.csv'))
+    y_test = pd.read_csv(os.path.join(data_dir, 'y_test.csv'))
+    
+    y_train = np.ravel(y_train)
+    y_test = np.ravel(y_test)
+
+    rf_classifier = ensemble.RandomForestClassifier(n_jobs=-1)
+    rf_classifier.fit(X_train, y_train)
+
+    # Sauvegarder le modèle dans un dossier 'models' à la racine du projet
+    model_dir = os.path.join(BASE_DIR, 'models')
+    os.makedirs(model_dir, exist_ok=True)
+    model_filename = os.path.join(model_dir, f'trained_model_{datetime.now().strftime("%Y%m%d")}.joblib')
+    joblib.dump(rf_classifier, model_filename)
+    print(f"Modèle entraîné et sauvegardé avec succès : {model_filename}")
+
+train_task = PythonOperator(
+    task_id='train_random_forest',
+    python_callable=train_model,
+    dag=dag,
+)
+
+# Ajout d'une tâche de nettoyage des anciens modèles (optionnel)
+def cleanup_old_models():
+    model_dir = os.path.join(BASE_DIR, 'models')
+    current_time = datetime.now()
+    for model_file in os.listdir(model_dir):
+        file_path = os.path.join(model_dir, model_file)
+        file_modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+        if (current_time - file_modified_time).days > 30:  # Supprimer les modèles de plus de 30 jours
+            os.remove(file_path)
+            print(f"Ancien modèle supprimé : {file_path}")
+
+cleanup_task = PythonOperator(
+    task_id='cleanup_old_models',
+    python_callable=cleanup_old_models,
+    dag=dag,
+)
+
+# Définir l'ordre des tâches
+train_task >> cleanup_task
