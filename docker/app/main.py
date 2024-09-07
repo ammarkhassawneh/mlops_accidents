@@ -2,7 +2,7 @@ import sqlite3
 
 import httpx
 from fastapi import FastAPI, Depends, HTTPException, status, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel, validator
 from passlib.context import CryptContext
@@ -13,6 +13,12 @@ import os
 import jwt
 import httpx
 from geopy.geocoders import Nominatim
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+import redis.asyncio as redis
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 
 
@@ -26,6 +32,43 @@ app = FastAPI(
         "email": "votre.email@domain.com",
     },
 )
+
+limiter = Limiter(key_func=get_remote_address)
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"message": "Too many requests, please try again later."}
+    )
+
+#==================#
+
+
+app.openapi_tags = [
+    {
+        "name": "Authentication",  
+        "description": "Endpoints pour l'authentification et l'inscription.",
+    },
+    {
+        "name": "Admin",
+        "description": "Endpoints pour la gestion des utilisateurs et des administrateurs.",
+    },
+    {
+        "name": "User",
+        "description": "Endpoints pour la gestion des utilisateurs.",
+    },
+    {
+        "name": "Predictions",
+        "description": "Endpoints pour la gestion des prédictions.",
+    },
+    {
+        "name": "Logs",
+        "description": "Endpoints pour consulter les logs.",
+    }
+]
+
+#================#
 
 # Configuration JWT
 SECRET_KEY = "a4e23a65f73b9bc44507ac7be592192d2dd60f273524c0f6d0ebdd30f8d6a660"
@@ -335,42 +378,42 @@ def log_activity(user_id: int, activity: str):
         db.conn.close()
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Récupère l'utilisateur actuel à partir du token JWT"""
+    """Récupère l'utilisateur actuel et son rôle à partir du token JWT"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Impossible de valider les informations d'identification",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        # Décoder le token JWT pour obtenir le nom d'utilisateur
+        # Décoder le token JWT pour obtenir les informations de l'utilisateur
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        if username is None:
+        role: str = payload.get("role")
+        if username is None or role is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
     except jwt.PyJWTError:
         raise credentials_exception
 
-    # Connexion à la base de données
     db_path = "/app/db/data.db"
     db = sqlite_utils.Database(db_path)
+    
     try:
-        # Rechercher l'utilisateur dans la base de données par nom d'utilisateur
-        users = list(db["users"].rows_where("name = ?", [token_data.username]))
-        if not users:
+        # Utiliser rows_where pour récupérer l'utilisateur basé sur son nom d'utilisateur
+        user = list(db["users"].rows_where("name = ?", [username]))
+        if not user:
             raise credentials_exception
-        user = users[0]  # Prendre le premier résultat si l'utilisateur existe
+        user = user[0]  # Obtenir la première entrée (l'utilisateur trouvé)
+        
+        # Vérifier si le rôle dans le token correspond au rôle de la base de données
+        if user["role"] != role:
+            raise credentials_exception
+        
         return user
     finally:
-        # Fermer la connexion à la base de données
         db.conn.close()
 
 
-def get_current_admin(current_user: User = Depends(get_current_user)):
-    """Vérifie si l'utilisateur actuel est un administrateur"""
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Permissions insuffisantes")
-    return current_user
+
 
 def authenticate_user(username: str, password: str):
     """
@@ -398,8 +441,9 @@ def authenticate_user(username: str, password: str):
     finally:
         db.conn.close()
 
-@app.post("/api/auth/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+#@app.post("/api/auth/token", response_model=Token)
+#@limiter.limit("3/minute")
+#async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(data={"sub": user["name"]}, expires_delta=access_token_expires)
@@ -407,7 +451,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 # Endpoints pour la gestion des utilisateurs et des administrateurs
-@app.post("/api/user/register", response_model=User, tags=["User"])
+@app.post("/api/user/register", response_model=User, tags=["Authentication"])
 async def register_user(user: UserCreate):
     db_path = "/app/db/data.db"
     db = sqlite_utils.Database(db_path)
@@ -436,18 +480,116 @@ async def register_user(user: UserCreate):
     finally:
         db.conn.close()
 
-@app.post("/api/admin/login", response_model=Token, tags=["Admin"])
-async def admin_login(form_data: OAuth2PasswordRequestForm = Depends()):
+@app.post("/api/auth/token", response_model=Token, tags=["Authentication"])
+@limiter.limit("3/minute")
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Endpoint pour l'authentification des utilisateurs et des administrateurs.
+    Cette route est commune pour tous les rôles.
+    """
     user = authenticate_user(form_data.username, form_data.password)
-    if user["role"] != "admin":
-        raise HTTPException(status_code=400, detail="L'utilisateur n'est pas un administrateur")
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Nom d'utilisateur ou mot de passe incorrect")
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(data={"sub": user["name"]}, expires_delta=access_token_expires)
-    log_activity(user["id"], "Connexion de l'administrateur")
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": user["name"], "role": user["role"]}, expires_delta=access_token_expires)
+    
+    log_activity(user["id"], f"Connexion réussie en tant que {user['role']}")
+
+    return {"access_token": access_token, "token_type": "bearer", "role": user["role"]}
+
+#=====================#
+@app.get("/admin/dashboard", tags=["Admin"])
+async def admin_dashboard(current_admin: User = Depends(get_current_user)):
+    """
+    Interface simple pour les administrateurs afin de visualiser le tableau de bord.
+    Cette route permet de visualiser les utilisateurs et prédictions actuelles.
+    """
+    if current_admin["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissions insuffisantes")
+    
+    db_path = "/app/db/data.db"
+    db = sqlite_utils.Database(db_path)
+    
+    try:
+        # Récupérer les utilisateurs
+        users = list(db["users"].rows)
+        # Récupérer les prédictions
+        predictions = list(db["predictions"].rows)
+    
+        # Retourner un aperçu général des utilisateurs et des prédictions
+        return {
+            "users_count": len(users),
+            "predictions_count": len(predictions),
+            "latest_users": users[:5],  # Afficher les 5 derniers utilisateurs
+            "latest_predictions": predictions[:5]  # Afficher les 5 dernières prédictions
+        }
+    finally:
+        db.conn.close()
+
+@app.delete("/admin/users/{user_id}", tags=["Admin"])
+async def delete_user(user_id: int, current_admin: User = Depends(get_current_user)):
+    """
+    Supprimer un utilisateur par ID (uniquement pour les administrateurs).
+    """
+    
+    if current_admin["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissions insuffisantes")
+    
+    db_path = "/app/db/data.db"
+    db = sqlite_utils.Database(db_path)
+    try:
+        db["users"].delete(user_id)
+        return {"message": f"Utilisateur {user_id} supprimé avec succès."}
+    finally:
+        db.conn.close()
+
+@app.put("/admin/users/{user_id}", tags=["Admin"])
+async def update_user_rights(user_id: int, read_rights: str, write_rights: str, current_admin: User = Depends(get_current_user)):
+    """
+    Mise à jour des droits de lecture et d'écriture pour un utilisateur.
+    """
+    
+    if current_admin["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissions insuffisantes")
+    
+    db_path = "/app/db/data.db"
+    db = sqlite_utils.Database(db_path)
+    try:
+        db["users"].update(user_id, {"read_rights": read_rights, "write_rights": write_rights})
+        return {"message": f"Droits de l'utilisateur {user_id} mis à jour avec succès."}
+    finally:
+        db.conn.close()
+
+
+@app.put("/users/me", response_model=User, tags=["User"])
+async def update_user_info(name: Optional[str] = None, email: Optional[str] = None, current_user: User = Depends(get_current_user)):
+    """
+    Mettre à jour les informations personnelles de l'utilisateur connecté.
+    """
+    db_path = "/app/db/data.db"
+    db = sqlite_utils.Database(db_path)
+    try:
+        update_data = {}
+        if name:
+            update_data["name"] = name
+        if email:
+            update_data["email"] = email
+        if update_data:
+            db["users"].update(current_user["id"], update_data)
+        return get_user_by_id(current_user["id"])
+    finally:
+        db.conn.close()
+
+#=========================#
 
 @app.get("/api/admin/users", response_model=List[User], tags=["Admin"])
-async def manage_users(current_admin: User = Depends(get_current_admin)):
+async def manage_users(current_admin: User = Depends(get_current_user)):
+    
+    if current_admin["role"] != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissions insuffisantes")
+    
     db_path = "/app/db/data.db"
     db = sqlite_utils.Database(db_path)
     try:
@@ -532,20 +674,38 @@ async def create_prediction(prediction: PredictionRequest, current_user: dict = 
         db.conn.close()
 
 
+#===========================#
 
 @app.get("/api/predictions/{user_id}", tags=["Predictions"])
-async def get_predictions_for_user(user_id: int):
+async def get_predictions_for_user(user_id: int, current_user: dict = Depends(get_current_user)):
+    """
+    Récupère les prédictions pour un utilisateur donné.
+    - Les administrateurs peuvent voir les prédictions de tout utilisateur.
+    - Les utilisateurs normaux peuvent voir uniquement leurs propres prédictions.
+    """
     db_path = "/app/db/data.db"
     db = sqlite_utils.Database(db_path)
+    
     try:
-        predictions = list(db.query("SELECT * FROM predictions WHERE user_id = ?", [user_id]))
+        # Si l'utilisateur est admin, il peut voir toutes les prédictions
+        if current_user["role"] == "admin":
+            predictions = list(db.query("SELECT * FROM predictions WHERE user_id = ?", [user_id]))
+        # Si l'utilisateur est un utilisateur normal, il ne peut voir que ses propres prédictions
+        elif current_user["id"] == user_id:
+            predictions = list(db.query("SELECT * FROM predictions WHERE user_id = ?", [user_id]))
+        else:
+            raise HTTPException(status_code=403, detail="Accès refusé : vous ne pouvez voir que vos propres prédictions.")
+        
         return predictions
     finally:
         db.conn.close()
+        
+#=========================#
+
 
 # Endpoints pour les journaux de requêtes
 @app.get("/api/request_logs", response_model=List[RequestLog], tags=["Logs"])
-async def get_request_logs():
+async def get_request_logs(current_admin: dict = Depends(get_current_user)):
     db_path = "/app/db/data.db"
     db = sqlite_utils.Database(db_path)
     try:
@@ -556,7 +716,7 @@ async def get_request_logs():
 
 # Endpoints pour les résultats de tests
 @app.post("/api/test_results", tags=["Tests"])
-async def log_test_result(result: TestResult):
+async def log_test_result(result: TestResult, current_admin: dict = Depends(get_current_user)):
     db_path = "/app/db/data.db"
     db = sqlite_utils.Database(db_path)
     try:
@@ -570,7 +730,7 @@ async def log_test_result(result: TestResult):
         db.conn.close()
 
 @app.get("/api/test_results", response_model=List[TestResult], tags=["Tests"])
-async def get_test_results():
+async def get_test_results(current_admin: dict = Depends(get_current_user)):
     db_path = "/app/db/data.db"
     db = sqlite_utils.Database(db_path)
     try:

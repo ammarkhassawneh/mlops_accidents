@@ -13,6 +13,7 @@ services:
       timeout: 5s
       retries: 5
 
+
   app:
     image: python:3.11.9
     working_dir: /app
@@ -25,10 +26,12 @@ services:
     ports:
       - 8000:80
     depends_on:
-      db:
+       db:
+      
         condition: service_healthy
     environment:
       - DATABASE_URL=sqlite:////app/db/data.db
+      - REDIS_HOST=redis
 
   ml_model:
     build: ./ml_model
