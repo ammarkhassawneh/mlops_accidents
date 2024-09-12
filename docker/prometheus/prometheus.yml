@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s  
+
+scrape_configs:
+  - job_name: 'api_main'
+    static_configs:
+      - targets: ['app:80']  # بوابة خدمة الـ API الرئيسي
+
+  - job_name: 'ml_model'
+    static_configs:
+      - targets: ['ml_model:80']  # بوابة خدمة النموذج (ml_model)
+
+  - job_name: 'mlflow'
+    static_configs:
+      - targets: ['mlflow:5000']

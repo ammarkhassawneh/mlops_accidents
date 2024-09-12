@@ -1,0 +1,155 @@
+version: '3.9'
+
+services:
+  db:
+    image: alpine:latest
+    command: /bin/sh -c "apk add --no-cache sqlite && echo 'Executing schema.sql' && sqlite3 /db/data.db '.read /db/schema.sql' && echo 'Schema executed' && tail -f /dev/null"
+    volumes:
+      - db_data:/db
+      - ./db/schema.sql:/db/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "sqlite3 /db/data.db 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  app:
+    image: python:3.11.9
+    working_dir: /app
+    command: >
+      sh -c "pip install -r requirements.txt &&
+      uvicorn main:app --host 0.0.0.0 --port 80"
+    volumes:
+      - ./app:/app
+      - db_data:/app/db
+    ports:
+      - 8000:80
+    depends_on:
+       db:
+      
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=sqlite:////app/db/data.db
+      - REDIS_HOST=redis
+
+  ml_model:
+    build: ./ml_model
+    ports:
+      - 8001:80
+    volumes:
+      - ./ml_model:/ml_model
+    depends_on:
+      - db
+    command: >
+      sh -c "pip install -r requirements.txt &&
+      python train_model.py && uvicorn ml_server:app --host 0.0.0.0 --port 80"
+      
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    depends_on:
+      - app
+      - ml_model
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - 3000:3000
+    volumes:
+      - ./grafana:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+
+  mlflow:
+    image: bitnami/mlflow:latest
+    ports:
+      - 5000:5000
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_ARTIFACT_STORE: ./mlruns
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+    depends_on:
+      - ml_model
+
+
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-init:
+    image: apache/airflow:2.6.3
+    command: ["bash", "-c", "airflow db init"]
+    env_file: .env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__CORE__FERNET_KEY: ${FERNET_KEY}
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${WEBSERVER_SECRET_KEY}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./ml_model:/opt/airflow/ml_model
+      - ./features:/opt/airflow/features
+    depends_on:
+      - postgres
+
+  airflow-webserver:
+    image: apache/airflow:2.6.3
+    command: ["bash", "-c", "airflow webserver"]
+    env_file: .env
+    ports:
+      - 8081:8080
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__CORE__FERNET_KEY: ${FERNET_KEY}
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${WEBSERVER_SECRET_KEY}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./ml_model:/opt/airflow/ml_model
+      - ./features:/opt/airflow/features
+    depends_on:
+      - postgres
+      - airflow-init
+
+  airflow-scheduler:
+    image: apache/airflow:2.6.3
+    command: ["bash", "-c", "airflow scheduler"]
+    env_file: .env
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'False'
+      AIRFLOW__CORE__FERNET_KEY: ${FERNET_KEY}
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${WEBSERVER_SECRET_KEY}
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./ml_model:/opt/airflow/ml_model
+      - ./features:/opt/airflow/features
+    depends_on:
+      - postgres
+      - airflow-init
+
+volumes:
+  db_data:
+  postgres-db-volume:
