@@ -1,7 +1,5 @@
 # MLOps Project for Road Accidents
 
-# MLOps Project for Road Accidents
-
 This project aims to reduce the number of road accidents by identifying high-risk areas and providing recommendations to improve safety. The data used in this project consists of annual files from 2005 to 2022, containing information about the characteristics, locations, vehicles, and users involved in accidents.
 
 ## Project Organization
@@ -81,6 +79,9 @@ This project aims to reduce the number of road accidents by identifying high-ris
 - Python 3.8
 - Docker
 - Docker Compose
+- Airflow
+- Prometheus
+- Grafana
 
 ### Installation
 
